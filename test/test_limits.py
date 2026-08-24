@@ -595,10 +595,13 @@ async def test_max_db_connections(pg, bouncer):
     # some users, doesn't matter which ones
     users = ["muser1", "muser2", "puser1", "puser2", "postgres"]
 
-    # p2 has max_db_connections=4
-    await asyncio.gather(
-        *[bouncer.asleep(0.5, dbname="p2", user=u, times=2) for u in users]
-    )
+    # p2 has max_db_connections=4, so the five pools have to take connections
+    # off each other to get all their clients served, and the log should name
+    # the limit that made them do it.
+    with bouncer.log_contains(r"closing because: evicted for max_db_connections \(age"):
+        await asyncio.gather(
+            *[bouncer.asleep(0.5, dbname="p2", user=u, times=2) for u in users]
+        )
 
     # p2 in PgBouncer maps to p0 in Postgres
     assert pg.connection_count("p0", users=users) == 4
@@ -616,3 +619,20 @@ async def test_max_user_connections(pg, bouncer):
     )
 
     assert pg.connection_count("p7", users=["maxedout"]) == 3
+
+
+async def test_max_user_connections_eviction(pg, bouncer):
+    # maxedout has max_user_connections=3, so filling the p7a pool with the
+    # user's whole budget leaves a client on p7b, a separate pool over the same
+    # Postgres database, with no way in except by evicting one of those now
+    # idle connections. Only one, because the user's connection count is
+    # re-read after each eviction.
+    await bouncer.asleep(
+        0.5, dbname="p7a", user="maxedout", times=3, connect_timeout=10
+    )
+    assert pg.connection_count("p7", users=["maxedout"]) == 3
+
+    with bouncer.log_contains(
+        r"closing because: evicted for max_user_connections \(age", times=1
+    ):
+        bouncer.test(dbname="p7b", user="maxedout", connect_timeout=10)

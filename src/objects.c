@@ -1800,7 +1800,7 @@ bool evict_connection(PgDatabase *db)
 	}
 
 	if (oldest_connection) {
-		disconnect_server(oldest_connection, true, "evicted");
+		disconnect_server(oldest_connection, true, "evicted for max_db_connections");
 		return true;
 	}
 	return false;
@@ -1814,7 +1814,7 @@ bool evict_pool_connection(PgPool *pool)
 	oldest_connection = compare_connections_by_time(oldest_connection, last_socket(&pool->idle_server_list));
 
 	if (oldest_connection) {
-		disconnect_server(oldest_connection, true, "evicted");
+		disconnect_server(oldest_connection, true, "evicted for pool_size");
 		return true;
 	}
 	return false;
@@ -1841,7 +1841,7 @@ bool evict_user_connection(PgCredentials *user_credentials)
 	}
 
 	if (oldest_connection) {
-		disconnect_server(oldest_connection, true, "evicted");
+		disconnect_server(oldest_connection, true, "evicted for max_user_connections");
 		return true;
 	}
 	return false;

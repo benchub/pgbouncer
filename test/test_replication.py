@@ -296,5 +296,5 @@ async def test_replication_pool_size_mixed_clients(bouncer):
     # eviction of one of the normal connections. One, not both: the pool is a
     # single server over its size, so the first eviction is all the room the
     # replication client needs.
-    with bouncer.log_contains(r"closing because: evicted \(age", times=1):
+    with bouncer.log_contains(r"closing because: evicted for pool_size \(age", times=1):
         bouncer.test(**connect_args, replication="database")
