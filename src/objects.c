@@ -1930,11 +1930,12 @@ void launch_new_connection(PgPool *pool, bool evict_if_needed)
 			}
 
 			if (c && c->replication && !sending_auth_query(c)) {
-				while (evict_if_needed && pool_pool_size(pool) >= max) {
+				while (evict_if_needed && max >= pool_pool_size(pool)) {
 					if (!evict_pool_connection(pool))
 						break;
+					max = pool_server_count(pool);
 				}
-				if (pool_pool_size(pool) < max)
+				if (max < pool_pool_size(pool))
 					goto allow_new;
 			}
 			log_debug("launch_new_connection: pool full (%d >= %d)",

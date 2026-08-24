@@ -293,6 +293,8 @@ async def test_replication_pool_size_mixed_clients(bouncer):
     await bouncer.asleep(0.5, times=2, **connect_args)
 
     # Then try to open a replication connection and ensure that it causes
-    # eviction of one of the normal connections
-    with bouncer.log_contains("closing because: evicted"):
+    # eviction of one of the normal connections. One, not both: the pool is a
+    # single server over its size, so the first eviction is all the room the
+    # replication client needs.
+    with bouncer.log_contains(r"closing because: evicted \(age", times=1):
         bouncer.test(**connect_args, replication="database")
