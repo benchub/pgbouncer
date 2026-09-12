@@ -563,7 +563,6 @@ pgbouncer_sources = files(
   'src/server.c',
   'src/stats.c',
   'src/system.c',
-  'src/takeover.c',
   'src/util.c',
   'src/varcache.c',
   'src/common/base64.c',
@@ -628,12 +627,14 @@ pgbouncer = executable('pgbouncer',
 if windows
   pgbevent_res = win.compile_resources('win32/eventmsg.rc',
                                        include_directories: pgbouncer_incdirs)
-  shared_library('pgbevent',
+  pgbevent = shared_module('pgbevent',
     'win32/pgbevent.c',
     pgbevent_res,
     name_prefix: '',
     include_directories: pgbouncer_incdirs,
     install: true,
+    install_dir: get_option('bindir'),
+    vs_module_defs: 'win32/pgbevent.def',
   )
 endif
 
@@ -652,6 +653,32 @@ if pandoc.found()
   subdir('doc')
 else
   message('pandoc not found: man pages will not be built or installed')
+endif
+
+# ----------------------------------------------------------------------
+# Windows binary distribution zip
+# ----------------------------------------------------------------------
+
+if windows
+  # We use required: false here to not fail the entire Windows build
+  # if strip is not found.  But make-zip.py requires --strip, so the
+  # zip target will fail then.
+  strip_prog = find_program('strip', required: false)
+  strip_args = []
+  if strip_prog.found()
+    strip_args = ['--strip', strip_prog.full_path()]
+  else
+    message('strip not found, zip target will not work')
+  endif
+
+  custom_target('zip',
+    output: 'pgbouncer-@0@-windows-@1@.zip'.format(meson.project_version(),
+                                                   host_machine.cpu()),
+    input: [pgbouncer, pgbevent,
+            files('etc/pgbouncer.ini', 'etc/userlist.txt', 'README.md', 'COPYRIGHT')],
+    command: [python, files('win32/make-zip.py'), strip_args, '-o', '@OUTPUT@', '@INPUT@'],
+    build_by_default: false,
+  )
 endif
 
 pkgdocdir = get_option('datadir') / 'doc' / 'pgbouncer'

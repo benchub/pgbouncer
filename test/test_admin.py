@@ -80,10 +80,6 @@ def test_show(bouncer):
         "clients",
         "config",
         "databases",
-        # Calling SHOW FDS on MacOS leaks the returned file descriptors to the
-        # python test runner. So we don't test this one directly. SHOW FDS is
-        # still tested indirectly by the takeover tests.
-        # "fds",
         "help",
         "lists",
         "peers",
@@ -105,6 +101,10 @@ def test_show(bouncer):
 
     for item in show_items:
         bouncer.admin(f"SHOW {item}")
+
+
+def test_jdbc_extra_float_digits(bouncer):
+    bouncer.admin("SET extra_float_digits = 2")
 
 
 def test_socket_id(bouncer) -> None:
